@@ -8,6 +8,7 @@ use App\Filament\Resources\ProductTransactions\Pages\ListProductTransactions;
 use App\Filament\Resources\ProductTransactions\Schemas\ProductTransactionForm;
 use App\Filament\Resources\ProductTransactions\Tables\ProductTransactionsTable;
 use App\Models\ProductTransaction;
+use App\Models\ProdukSize;
 use BackedEnum;
 use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\FileUpload;
@@ -18,11 +19,29 @@ use Filament\Schemas\Components\Utilities\Get;
 use App\Models\PromoCode;
 use Filament\Forms\Components\TextInput;
 use App\Models\Produk;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
+use Filament\Tables\Filters\TrashedFilter;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\ForceDeleteBulkAction;
+use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\Hidden;
+use Filament\Livewire\Notifications;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Laravel\Pail\File;
+
+/* TODO:
+- Konfigurasi Nama Category, Kode Promo & Brands tidak boleh sama dengan yang sudah ada
+- Konfigurasi Stock Produk di Transaksi
+- Tampilan dari Mata Uang
+- Add Fitur Approve bagi yang belum Lunas
+*/
 
 class ProductTransactionResource extends Resource
 {
@@ -54,7 +73,9 @@ class ProductTransactionResource extends Resource
                             ->label('Booking ID')
                             ->default(fn () => ProductTransaction::generateUniqueTrxId())
                             ->nullable()
-                            ->disabled(),
+                            ->readOnly()
+                            ->dehydrated()
+                            ->required(),
                         TextInput::make('city')
                             ->required()
                             ->maxLength(255)
@@ -84,6 +105,7 @@ class ProductTransactionResource extends Resource
                                 }
                                 $produk = Produk::find($state);
                                     if ($produk) {
+                                        $set('shoe_size', null);
                                         $set('product_price', $produk->price);
                                         $set('quantity', 1);
                                         $set('sub_total_amount', $produk->price);
@@ -93,23 +115,18 @@ class ProductTransactionResource extends Resource
                             })
                             ->required(),
 
-                        Select::make('size')
+                        Select::make('shoe_size')
                             ->label('Ukuran Sepatu')
-                            ->options([
-                                '36' => '36',
-                                '37' => '37',
-                                '38' => '38',
-                                '39' => '39',
-                                '40' => '40',
-                                '41' => '41',
-                                '42' => '42',
-                                '43' => '43',
-                                '44' => '44',
-                            ])
-                            ->required(),
+                            ->required()
+                            ->options(fn (callable $get) =>
+                                ProdukSize::getSize($get('produk_id'))
+                            )
+                            ->hidden(fn (callable $get) => !$get('produk_id'))
+                            ->reactive(),
                             
                         TextInput::make('promo_code_input')
                             ->label('Kode Promo')
+                            ->dehydrated(false)
                             ->live(debounce: 500)
                             ->afterStateUpdated(function (?string $state, Set $set, Get $get) {
 
@@ -134,6 +151,9 @@ class ProductTransactionResource extends Resource
                                     $set('grand_total_amount', $subTotal);
                                 }
                             }),
+
+                            Hidden::make('promo_code_id')->nullable(),
+                            Hidden::make('product_price')->default(0),
 
                         TextInput::make('sub_total_amount')
                             ->label('Total Harga Sebelum Diskon')
@@ -182,9 +202,6 @@ class ProductTransactionResource extends Resource
                             })
                             ->label('Jumlah Produk'),
 
-                        Hidden::make('product_price')
-                            ->default(0),
-
                         Select::make('is_paid')
                             ->label('Status Pembayaran ?')
                             ->options([
@@ -200,8 +217,11 @@ class ProductTransactionResource extends Resource
                     ->schema([
                         FileUpload::make('proof')
                             ->label('Unggah Bukti Pembayaran')
+                            ->image()
+                            ->preserveFilenames()
                             ->directory('product-transactions/proofs')
                             ->maxSize(2048)
+                            ->disk('public')
                     ])
                     ->collapsible()
                     ->columnSpanFull(),
@@ -210,7 +230,44 @@ class ProductTransactionResource extends Resource
 
     public static function table(Table $table): Table
     {
-        return ProductTransactionsTable::configure($table);
+        return $table
+            ->columns([
+                ImageColumn::make('proof')
+                ->label('Bukti Pembayaran'),
+                TextColumn::make('name')
+                ->label('Nama Pembeli')
+                ->searchable()
+                ->sortable(),
+                TextColumn::make('email')
+                ->label('Akun Email')
+                ->sortable(),
+                TextColumn::make('address')
+                ->label('Alamat')
+                ->sortable(),
+                TextColumn::make('quantity')
+                ->label('Quantitas')
+                ->sortable(),
+                TextColumn::make('shoe_size')
+                ->label('size')
+                ->sortable(),
+                IconColumn::make('is_paid')
+                ->label('Lunas')
+                ->boolean(),
+            ])
+            // ->filters([
+            //     TrashedFilter::make(),
+            // ])
+            ->recordActions([
+                EditAction::make(),
+                DeleteAction::make(),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
+                    ForceDeleteBulkAction::make(),
+                    RestoreBulkAction::make(),
+                ]),
+            ]);
     }
 
     public static function getRelations(): array

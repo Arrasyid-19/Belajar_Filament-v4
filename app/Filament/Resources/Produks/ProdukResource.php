@@ -89,11 +89,24 @@ class ProdukResource extends Resource
                         Fieldset::make('Sizes')
                             ->schema([
                                 Repeater::make('sizes')
+                                    ->relationship()
                                     ->schema([
-                                        TagsInput::make('size')
+                                        Select::make('size')
                                             ->required()
                                             ->label('Tambah ukuran produk yang lainnya')
-                                            ->suggestions(['S', 'M', 'L', 'XL', 'XXL']),
+                                            ->options(
+                                                [
+                                                    '35' => '35',
+                                                    '36' => '36',
+                                                    '37' => '37',
+                                                    '38' => '38',
+                                                    '39' => '39',
+                                                    '40' => '40',
+                                                    '41' => '41',
+                                                    '42' => '42',
+                                                    '43' => '43',
+                                                    '44' => '44',
+                                                ]),
                                     ])
                                     ->addActionLabel('Add to sizes')
                                     ->columnSpanFull(),

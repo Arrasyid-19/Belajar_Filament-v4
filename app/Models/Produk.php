@@ -43,12 +43,17 @@ class Produk extends Model
 
     public function sizes(): HasMany
     {
-        return $this->hasMany(ProdukSize::class);
+        return $this->hasMany(ProdukSize::class, 'produk_id');
     }
 
     public function setNameAttribute($value)
     {
         $this->attributes['name'] = $value;
         $this->attributes['slug'] = Str::slug($value);
+    }
+
+    protected static function setStock()
+    {
+
     }
 }

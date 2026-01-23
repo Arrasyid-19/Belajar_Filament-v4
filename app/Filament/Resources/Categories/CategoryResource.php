@@ -38,9 +38,11 @@ class CategoryResource extends Resource
             ->schema([
                 TextInput::make('name')
                     ->required()
+                    ->columnSpanFull()
                     ->maxLength(255),
                 FileUpload::make('icon')
                     ->image()
+                    ->columnSpanFull()
                     ->directory('categories')
                     ->maxSize(1024)
                     ->required()

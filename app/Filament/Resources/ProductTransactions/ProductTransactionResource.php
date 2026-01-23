@@ -9,12 +9,20 @@ use App\Filament\Resources\ProductTransactions\Schemas\ProductTransactionForm;
 use App\Filament\Resources\ProductTransactions\Tables\ProductTransactionsTable;
 use App\Models\ProductTransaction;
 use BackedEnum;
-use Filament\Forms\Components\TextInput;
+use Filament\Schemas\Components\Section;
 use Filament\Forms\Components\FileUpload;
 use Filament\Resources\Resource;
+use Filament\Forms\Components\Select;
+use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Utilities\Get;
+use App\Models\PromoCode;
+use Filament\Forms\Components\TextInput;
+use App\Models\Produk;
+use Filament\Forms\Components\Hidden;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Laravel\Pail\File;
 
 class ProductTransactionResource extends Resource
 {
@@ -26,15 +34,177 @@ class ProductTransactionResource extends Resource
     {
         return $schema
             ->schema([
-                TextInput::make('name')
-                    ->required()
-                    ->maxLength(255),
-                FileUpload::make('icon')
-                    ->image()
-                    ->directory('categories')
-                    ->maxSize(1024)
-                    ->required()
-                    ->nullable(),
+                Section::make('Informasi Pembeli')
+                    ->schema([
+                        TextInput::make('name')
+                            ->required()
+                            ->maxLength(255)
+                            ->label('Nama Pembeli'),
+                        TextInput::make('phone')
+                            ->numeric()
+                            ->required()
+                            ->maxLength(255)
+                            ->label('No. Telp'),
+                        TextInput::make('email')
+                            ->email()
+                            ->required()
+                            ->maxLength(255)
+                            ->label('Alamat Email'),
+                        TextInput::make('booking_trx_id')
+                            ->label('Booking ID')
+                            ->default(fn () => ProductTransaction::generateUniqueTrxId())
+                            ->nullable()
+                            ->disabled(),
+                        TextInput::make('city')
+                            ->required()
+                            ->maxLength(255)
+                            ->label('Kota/Kabupaten'),
+                        TextInput::make('post_code')
+                            ->required()
+                            ->maxLength(20)
+                            ->label('Kode Pos'),
+                        TextInput::make('address')
+                            ->required()
+                            ->maxLength(500)
+                            ->label('Alamat Lengkap'),
+                    ])
+                    ->collapsible()
+                    ->columns(2),
+
+                    Section::make('Detail Pembayaran')
+                    ->schema([
+                        Select::make('produk_id')
+                            ->label('Pilih Produk yang Dibeli')
+                            ->relationship('produk', 'name')
+                            ->live()
+                            ->afterStateUpdated(function ($state, Set $set) {
+
+                                if (!$state) {
+                                    return;
+                                }
+                                $produk = Produk::find($state);
+                                    if ($produk) {
+                                        $set('product_price', $produk->price);
+                                        $set('quantity', 1);
+                                        $set('sub_total_amount', $produk->price);
+                                        $set('discount_amount', 0);
+                                        $set('grand_total_amount', $produk->price);
+                                    }
+                            })
+                            ->required(),
+
+                        Select::make('size')
+                            ->label('Ukuran Sepatu')
+                            ->options([
+                                '36' => '36',
+                                '37' => '37',
+                                '38' => '38',
+                                '39' => '39',
+                                '40' => '40',
+                                '41' => '41',
+                                '42' => '42',
+                                '43' => '43',
+                                '44' => '44',
+                            ])
+                            ->required(),
+                            
+                        TextInput::make('promo_code_input')
+                            ->label('Kode Promo')
+                            ->live(debounce: 500)
+                            ->afterStateUpdated(function (?string $state, Set $set, Get $get) {
+
+                            if (blank($state)) {
+                                return;
+                            }
+
+                            $promo = PromoCode::where('code', $state)->first();
+
+                            $subTotal = (int) ($get('sub_total_amount') ?? 0);
+
+                                if ($promo) {
+                                    $set('promo_code_id', $promo->id);
+                                    $set('discount_amount', $promo->discount_amount);
+                                    $set(
+                                        'grand_total_amount',
+                                        max(0, $subTotal - $promo->discount_amount)
+                                        );
+                                } else {
+                                    $set('promo_code_id', null);
+                                    $set('discount_amount', 0);
+                                    $set('grand_total_amount', $subTotal);
+                                }
+                            }),
+
+                        TextInput::make('sub_total_amount')
+                            ->label('Total Harga Sebelum Diskon')
+                            ->numeric()
+                            ->live()
+                            ->prefix('Rp')
+                            ->readOnly()
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+                                $discount = $get('discount_amount') ?? 0;
+                                $set(
+                                    'grand_total_amount',
+                                    max(0, $state - $discount)
+                                );
+                            }),
+
+                        TextInput::make('discount_amount')
+                            ->label('Total Diskon')
+                            ->numeric()
+                            ->readOnly(),
+
+                        TextInput::make('grand_total_amount')
+                            ->numeric()
+                            ->prefix('Rp')
+                            ->label('Total Harga')
+                            ->readOnly(),
+
+                        TextInput::make('quantity')
+                            ->numeric()
+                            ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, Set $set, Get $get) {
+
+                                $price = (int) $get('product_price') ?? 0;
+                                $qty = max(1, (int) $state);
+
+                                $subTotal = $price * $qty;
+
+                                $set('sub_total_amount', $subTotal);
+
+                                $discount = (int) ($get('discount_amount') ?? 0);
+                                
+                                $set(
+                                    'grand_total_amount',
+                                    max(0, $subTotal - $discount)
+                                );
+                            })
+                            ->label('Jumlah Produk'),
+
+                        Hidden::make('product_price')
+                            ->default(0),
+
+                        Select::make('is_paid')
+                            ->label('Status Pembayaran ?')
+                            ->options([
+                                1 => 'Lunas',
+                                0 => 'Belum Lunas',
+                            ])
+                            ->required(),
+                    ])
+                    ->collapsible()
+                    ->columns(2),
+
+                    Section::make('Bukti Pembayaran')
+                    ->schema([
+                        FileUpload::make('proof')
+                            ->label('Unggah Bukti Pembayaran')
+                            ->directory('product-transactions/proofs')
+                            ->maxSize(2048)
+                    ])
+                    ->collapsible()
+                    ->columnSpanFull(),
             ]);
     }
 

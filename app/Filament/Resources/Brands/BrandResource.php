@@ -38,12 +38,14 @@ class BrandResource extends Resource
             ->schema([
                 TextInput::make('name')
                     ->required()
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->columnSpanFull(),
                 FileUpload::make('logo')
                     ->image()
                     ->directory('brands')
                     ->maxSize(1024)
                     ->required()
+                    ->columnSpanFull()
                     ->nullable(),
             ]);
     }

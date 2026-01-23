@@ -51,7 +51,7 @@ class ProdukResource extends Resource
                 # Product Information
                 Fieldset::make('Informasi Produk')
                     ->schema([
-                        Grid::make(2)->schema([
+                        Grid::make(1)->schema([
                             TextInput::make('name')
                                 ->required()
                                 ->maxLength(255)
@@ -79,6 +79,7 @@ class ProdukResource extends Resource
                                     ->directory('produks/photos')
                                     ->required(),
                             ])
+                            ->columnSpanFull()
                             ->addActionLabel('Add to photos')
                             ->reorderableWithButtons(),
                     ])
@@ -94,7 +95,8 @@ class ProdukResource extends Resource
                                             ->label('Tambah ukuran produk yang lainnya')
                                             ->suggestions(['S', 'M', 'L', 'XL', 'XXL']),
                                     ])
-                                    ->addActionLabel('Add to sizes'),
+                                    ->addActionLabel('Add to sizes')
+                                    ->columnSpanFull(),
                             ])
                             ->columnSpanFull()
                             ->maxWidth('2xl'),

@@ -9,7 +9,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductTransaction extends Model
 {
-
+    use HasFactory, SoftDeletes;
+    
     protected $fillable = [
         'name',
         'phone',
@@ -37,6 +38,7 @@ class ProductTransaction extends Model
         } while (self::where('booking_trx_id', $randomString)->exists());
         return $randomString;
     }
+
 
     public function produk(): BelongsTo
     {

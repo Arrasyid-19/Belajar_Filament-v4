@@ -51,9 +51,4 @@ class Produk extends Model
         $this->attributes['name'] = $value;
         $this->attributes['slug'] = Str::slug($value);
     }
-
-    protected static function setStock()
-    {
-
-    }
 }

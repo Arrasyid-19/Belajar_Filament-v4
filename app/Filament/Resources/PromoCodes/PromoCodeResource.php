@@ -39,9 +39,19 @@ class PromoCodeResource extends Resource
         return $schema
             ->schema([
                 TextInput::make('code')
+                    ->unique(ignoreRecord:true) //Agar Kode Promo menjadi Unik, tidak duplikat.
                     ->required()
                     ->label('Kode Promo')
-                    ->maxLength(255),
+                     ->rules([ //Custom Rules
+                        'string',
+                        'min:5',
+                        'max:255'
+                    ])
+                    ->validationMessages([ //Pesan Khusus
+                        'unique' => 'Kode Promo sudah ada, Mohon ganti dengan yang lain',
+                        'min'    => 'Kode Promo terlalu pendek (minimal 5 karakter)',
+                        'max'    => 'Kode Promo terlalu panjang'
+                    ]),
 
                 TextInput::make('discount_amount')
                     ->required()

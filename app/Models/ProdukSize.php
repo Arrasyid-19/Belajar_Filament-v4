@@ -12,7 +12,7 @@ class ProdukSize extends Model
 
     protected $fillable = ['size', 'produk_id'];
 
-    protected static function getSize(?int $produkId)
+    protected static function getSize(?int $produkId) // Mengambil ukuran produk berdasarkan produk_id
     {
         if (!$produkId) {
             return [];

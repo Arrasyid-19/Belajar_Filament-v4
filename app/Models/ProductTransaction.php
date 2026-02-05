@@ -11,6 +11,7 @@ class ProductTransaction extends Model
 {
     use HasFactory, SoftDeletes;
     
+    // Isi atribut yang dapat diisi secara massal
     protected $fillable = [
         'name',
         'phone',
@@ -30,7 +31,7 @@ class ProductTransaction extends Model
         'proof',
     ];
 
-    public static function generateUniqueTrxId()
+    public static function generateUniqueTrxId() // Fungsi untuk menghasilkan ID transaksi unik
     {
         $prefix = 'TJH';
         do {

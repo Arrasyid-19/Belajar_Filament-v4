@@ -9,7 +9,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class ProductTransaction extends Model
 {
-
+    use HasFactory, SoftDeletes;
+    
+    // Isi atribut yang dapat diisi secara massal
     protected $fillable = [
         'name',
         'phone',
@@ -24,12 +26,12 @@ class ProductTransaction extends Model
         'discount_amount',
         'is_paid',
         'produk_id',
-        'produk_size',
+        'shoe_size',
         'promo_code_id',
         'proof',
     ];
 
-    public static function generateUniqueTrxId()
+    public static function generateUniqueTrxId() // Fungsi untuk menghasilkan ID transaksi unik
     {
         $prefix = 'TJH';
         do {
@@ -37,6 +39,7 @@ class ProductTransaction extends Model
         } while (self::where('booking_trx_id', $randomString)->exists());
         return $randomString;
     }
+
 
     public function produk(): BelongsTo
     {

@@ -53,15 +53,26 @@ class ProdukResource extends Resource
                     ->schema([
                         Grid::make(1)->schema([
                             TextInput::make('name')
+                                ->unique(ignoreRecord: true) //Agar Nama menjadi Unik, tidak duplikat.
                                 ->required()
-                                ->maxLength(255)
-                                ->label('Nama Produk'),
+                                ->label('Nama Produk')
+                                ->rules ([  //Custom rules
+                                    'string',
+                                    'min:5',
+                                    'max:255'
+                                ])
+                                ->validationMessages([ //Pesan Khusus
+                                    'unique' => 'Nama Produk sudah ada',
+                                    'min'    => 'Nama Produk terlalu pendek (min 5 huruf/karakter)',
+                                    'max'    => 'Nama Produk terlalu panjang'
+                                ]),
 
                             TextInput::make('price')
                                 ->prefix('Rp')
                                 ->numeric()
                                 ->required()
-                                ->label('Harga'),
+                                ->label('Harga')
+                                ->minValue(10000), //Harga tidak boleh lebih rendah dari 10.000
                         ]),
 
                         FileUpload::make('thumbnail')
@@ -86,16 +97,25 @@ class ProdukResource extends Resource
                     ->columnSpanFull()
                     ->maxWidth('4xl'),
 
-                        Fieldset::make('Sizes')
+                        Fieldset::make('Pilih Size')
                             ->schema([
                                 Repeater::make('sizes')
+                                    ->relationship()
                                     ->schema([
-                                        TagsInput::make('size')
+                                        Select::make('size')
                                             ->required()
-                                            ->label('Tambah ukuran produk yang lainnya')
-                                            ->suggestions(['S', 'M', 'L', 'XL', 'XXL']),
+                                            ->label('Tambahkan ukuran produk yang lainnya')
+                                            ->options(
+                                                collect(range(30, 45)) //Pemilihan antara 30-45
+                                                    ->mapWithKeys(fn($size) => [$size => (string) $size])
+                                                    ->toArray()
+                                            )
+                                            ->distinct() //checking antar item repeater agar tidak ada data duplikat 
+                                            ->validationMessages([
+                                                'distinct' => 'Ukuran tidak boleh duplikat'
+                                            ])
                                     ])
-                                    ->addActionLabel('Add to sizes')
+                                    ->addActionLabel('Tambahkan ukuran Yang lainnya')
                                     ->columnSpanFull(),
                             ])
                             ->columnSpanFull()
@@ -130,6 +150,7 @@ class ProdukResource extends Resource
                         TextInput::make('stock')
                             ->numeric()
                             ->required()
+                            ->minValue(1)
                             ->suffix('pcs'),
                     ])
                     ->columnSpanFull()
@@ -148,7 +169,7 @@ class ProdukResource extends Resource
                 ->sortable(),
                 TextColumn::make('price')
                 ->label('Harga')
-                ->money('idr', true)
+                ->money('idr', locale:'id')
                 ->sortable(),
                 TextColumn::make('category.name')
                 ->label('Kategori')
@@ -159,9 +180,15 @@ class ProdukResource extends Resource
                 TextColumn::make('stock')
                 ->label('Stok')
                 ->sortable(),
-                IconColumn::make('is_popular')
-                ->label('Populer')
-                ->boolean(),
+                TextColumn::make('is_popular')
+                ->label('Status Produk')
+                ->badge()
+                ->formatStateUsing(fn (bool $state):string => $state
+                        ? "Populer"
+                        : "Tidak Populer")
+                    ->color(fn (bool $state):string => $state
+                        ? "success"
+                        : "danger")
             ])
             ->filters([
                 TrashedFilter::make(),

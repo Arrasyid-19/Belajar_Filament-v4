@@ -5,8 +5,6 @@ namespace App\Filament\Resources\Categories;
 use App\Filament\Resources\Categories\Pages\CreateCategory;
 use App\Filament\Resources\Categories\Pages\EditCategory;
 use App\Filament\Resources\Categories\Pages\ListCategories;
-use App\Filament\Resources\Categories\Schemas\CategoryForm;
-use App\Filament\Resources\Categories\Tables\CategoriesTable;
 use App\Models\Category;
 use BackedEnum;
 use Filament\Actions\DeleteAction;
@@ -23,6 +21,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\FileUpload;
 use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -37,9 +36,19 @@ class CategoryResource extends Resource
         return $schema
             ->schema([
                 TextInput::make('name')
+                    ->unique(ignoreRecord:true) //Agar Kategori menjadi unik, tidak ada yang duplikat.
                     ->required()
-                    ->columnSpanFull()
-                    ->maxLength(255),
+                     ->rules([ //Custom rules
+                        'string',
+                        'min:3',
+                        'max:255'
+                    ])
+                    ->validationMessages([ //Pesan Khusus
+                        'unique' => 'Kategori sudah ada, Mohon ganti dengan kategori yang lain',
+                        'min'    => 'Nama Kategori terlalu pendek (minimal 3 karakter)',
+                        'max'    => 'Nama Kategori terlalu panjang'
+                    ])
+                        ->columnSpanFull(),
                 FileUpload::make('icon')
                     ->image()
                     ->columnSpanFull()
@@ -58,6 +67,9 @@ class CategoryResource extends Resource
                 ->label('Category Name')
                 ->searchable(),
                 ImageColumn::make('icon')->circular(),
+            ])
+             ->filters([
+                TrashedFilter::make(),
             ])
             ->recordActions([
                 EditAction::make(),

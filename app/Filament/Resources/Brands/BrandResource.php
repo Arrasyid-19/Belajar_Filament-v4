@@ -5,8 +5,6 @@ namespace App\Filament\Resources\Brands;
 use App\Filament\Resources\Brands\Pages\CreateBrand;
 use App\Filament\Resources\Brands\Pages\EditBrand;
 use App\Filament\Resources\Brands\Pages\ListBrands;
-use App\Filament\Resources\Brands\Schemas\BrandForm;
-use App\Filament\Resources\Brands\Tables\BrandsTable;
 use App\Models\Brand;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -23,6 +21,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Tables\Filters\TrashedFilter;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
@@ -37,9 +36,20 @@ class BrandResource extends Resource
         return $schema
             ->schema([
                 TextInput::make('name')
+                    ->unique(ignoreRecord:true) //Agar Brand menjadi Unik. tidak ada yang duplikat.
                     ->required()
-                    ->maxLength(255)
-                    ->columnSpanFull(),
+                    ->rules([ //Custom rules
+                        'string',
+                        'min:3',
+                        'max:255'
+                    ])
+                    ->validationMessages([ //Pesan khusus
+                        'unique' => 'Brand sudah ada, Mohon ganti dengan yang lain',
+                        'min'    => 'Nama Brand terlalu pendek (minimal 3 karakter)',
+                        'max'    => 'Nama Brand terlalu panjang'
+                    ])
+                        ->columnSpanFull(),
+
                 FileUpload::make('logo')
                     ->image()
                     ->directory('brands')
@@ -58,6 +68,9 @@ class BrandResource extends Resource
                 ->label('Brand Name')
                 ->searchable(),
                 ImageColumn::make('logo')->circular(),
+            ])
+             ->filters([
+                TrashedFilter::make(),
             ])
             ->recordActions([
                 EditAction::make(),
